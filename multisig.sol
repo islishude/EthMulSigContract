@@ -2,29 +2,29 @@ pragma solidity ^0.5.0;
 
 contract ERC20Interface {
     function totalSupply() public view returns (uint);
-    function balanceOf(address tokenOwner) public view returns (uint balance);
+    function balanceOf(address tokenOwner) public view returns (uint256 balance);
     function allowance(address tokenOwner, address spender)
         public
         view
-        returns (uint remaining);
-    function transfer(address to, uint tokens) public returns (bool success);
-    function approve(address spender, uint tokens)
+        returns (uint256 remaining);
+    function transfer(address to, uint256 tokens) public returns (bool success);
+    function approve(address spender, uint256 tokens)
         public
         returns (bool success);
-    function transferFrom(address from, address to, uint tokens)
+    function transferFrom(address from, address to, uint256 tokens)
         public
         returns (bool success);
 
-    event Transfer(address indexed from, address indexed to, uint tokens);
+    event Transfer(address indexed from, address indexed to, uint256 tokens);
     event Approval(
         address indexed tokenOwner,
         address indexed spender,
-        uint tokens
+        uint256 tokens
     );
 }
 
 contract MultiSig {
-    uint public nonce;
+    uint256 public nonce;
     uint8 public threshold;
     uint8 public sigv;
 
@@ -34,7 +34,7 @@ contract MultiSig {
     event Withdraw(
         address indexed from,
         address indexed to,
-        uint indexed value
+        uint256 indexed value
     );
 
     modifier OnlyMember {
@@ -48,7 +48,7 @@ contract MultiSig {
     {
         require(M > 0, "threshold must greater than zero");
         threshold = M;
-        for (uint i = 0; i < _members.length; ++i) {
+        for (uint256 i = 0; i < _members.length; ++i) {
             if (memberDict[_members[i]] || _members[i] == address(0x0)) {
                 continue;
             }
@@ -87,7 +87,7 @@ contract MultiSig {
             "Invalid signs length"
         );
         address[] memory checked = new address[](threshold);
-        for (uint i = 0; i < threshold; ++i) {
+        for (uint256 i = 0; i < threshold; ++i) {
             bytes32 hash = keccak256(
                 abi.encode(func, msg.sender, _token, _from, _to, _value, nonce)
             );
@@ -105,7 +105,7 @@ contract MultiSig {
         bytes32[] memory r,
         bytes32[] memory s,
         address payable _to,
-        uint _value
+        uint256 _value
     ) public OnlyMember returns (bool) {
         checkSig(hex"4b239a29", r, s, address(0x0), address(this), _to, _value);
         _to.transfer(_value);
