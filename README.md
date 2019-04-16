@@ -1,0 +1,1 @@
+MultiSig contract for Ethereum
