@@ -2,7 +2,10 @@ pragma solidity ^0.5.0;
 
 contract ERC20Interface {
     function totalSupply() public view returns (uint);
-    function balanceOf(address tokenOwner) public view returns (uint256 balance);
+    function balanceOf(address tokenOwner)
+        public
+        view
+        returns (uint256 balance);
     function allowance(address tokenOwner, address spender)
         public
         view
@@ -26,10 +29,10 @@ contract ERC20Interface {
 contract MultiSig {
     uint256 public nonce;
     uint8 public threshold;
-    uint8 public sigv;
 
-    address[] internal memberSet;
-    mapping(address => bool) internal memberDict;
+    address[] internal _members;
+    mapping(address => bool) public membership;
+    mapping(uint256 => mapping(address => bool)) confirmation;
 
     event Withdraw(
         address indexed from,
@@ -38,43 +41,35 @@ contract MultiSig {
     );
 
     modifier OnlyMember {
-        require(memberDict[msg.sender], "no permission to execute");
+        require(membership[msg.sender], "no permission to execute");
         _;
     }
 
-    constructor(uint8 M, address[] memory _members, uint8 chainid)
-        public
-        payable
-    {
+    constructor(uint8 M, address[] memory __members) public payable {
         require(M > 0, "threshold must greater than zero");
         threshold = M;
-        for (uint256 i = 0; i < _members.length; ++i) {
-            if (memberDict[_members[i]] || _members[i] == address(0x0)) {
+        for (uint256 i = 0; i < __members.length; ++i) {
+            if (membership[__members[i]] || __members[i] == address(0x0)) {
                 continue;
             }
-            memberDict[_members[i]] = true;
-            memberSet.push(_members[i]);
+            membership[__members[i]] = true;
+            _members.push(__members[i]);
         }
         require(
-            threshold <= memberSet.length,
+            threshold <= _members.length,
             "threshold must less than length of member"
         );
-        sigv = chainid * 2 + 36; // mainnet's chainid is 1
     }
 
     function() external payable {}
 
-
-    function isMember(address _owner) public view returns (bool) {
-        return memberDict[_owner];
-    }
-
     function members() public view returns (address[] memory) {
-        return memberSet;
+        return _members;
     }
 
     function checkSig(
         bytes4 func,
+        uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s,
         address _token,
@@ -83,49 +78,66 @@ contract MultiSig {
         uint256 _value
     ) internal {
         require(
-            r.length == s.length && r.length == threshold,
+            v.length == r.length && r.length == s.length,
             "Invalid signs length"
         );
-        address[] memory checked = new address[](threshold);
+        require(v.length >= threshold, "Insufficient number of signatures");
+        require(_to != address(this), "Can not transfer to current contract");
         for (uint256 i = 0; i < threshold; ++i) {
-            bytes32 hash = keccak256(
-                abi.encode(func, msg.sender, _token, _from, _to, _value, nonce)
+            bytes memory data = abi.encode(
+                func,
+                msg.sender,
+                _token,
+                _from,
+                _to,
+                _value,
+                nonce
             );
-            address member = ecrecover(hash, sigv, r[i], s[i]);
-            require(memberDict[member], "no permission to sign");
-            for (uint256 j = 0; j < i; j++) {
-                require(checked[j] != member, "duplicate signature");
-            }
-            checked[i] = member;
+            bytes32 hash = keccak256(data);
+            address member = ecrecover(hash, v[i], r[i], s[i]);
+            require(membership[member], "no permission to sign");
+            require(!confirmation[nonce][member], "duplicate signature");
         }
         nonce++;
     }
 
     function transfer(
+        uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s,
         address payable _to,
         uint256 _value
     ) public OnlyMember returns (bool) {
-        checkSig(hex"4b239a29", r, s, address(0x0), address(this), _to, _value);
+        checkSig(
+            hex"4b239a29",
+            v,
+            r,
+            s,
+            address(0x0),
+            address(this),
+            _to,
+            _value
+        );
         _to.transfer(_value);
         emit Withdraw(msg.sender, _to, _value);
         return true;
     }
 
     function erc20Transfer(
+        uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s,
         address _token,
         address _to,
         uint256 _value
     ) public OnlyMember {
-        checkSig(hex"0e9b380e", r, s, _token, address(this), _to, _value);
+        checkSig(hex"0e9b380e", v, r, s, _token, address(this), _to, _value);
         // The wallet should check ERC20 Transfer event for transaction status
         ERC20Interface(_token).transfer(_to, _value);
     }
 
     function erc20TransferFrom(
+        uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s,
         address _token,
@@ -133,18 +145,28 @@ contract MultiSig {
         address _to,
         uint256 _value
     ) public OnlyMember {
-        checkSig(hex"91f099fe", r, s, _token, _from, _to, _value);
+        checkSig(hex"91f099fe", v, r, s, _token, _from, _to, _value);
         ERC20Interface(_token).transferFrom(_from, _to, _value);
     }
 
     function erc20Approve(
+        uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s,
         address _token,
         address _spender,
         uint256 _value
     ) public OnlyMember {
-        checkSig(hex"994ead30", r, s, _token, address(this), _spender, _value);
+        checkSig(
+            hex"994ead30",
+            v,
+            r,
+            s,
+            _token,
+            address(this),
+            _spender,
+            _value
+        );
         ERC20Interface(_token).approve(_spender, _value);
     }
 }
