@@ -1,4 +1,6 @@
-pragma solidity ^0.5.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.7.0;
 
 contract MultiSig {
     uint256 public nonce;
@@ -19,7 +21,7 @@ contract MultiSig {
         _;
     }
 
-    constructor(uint8 M, address[] memory __members) public payable {
+    constructor(uint8 M, address[] memory __members) payable {
         require(M > 0, "threshold must greater than zero");
         threshold = M;
         for (uint256 i = 0; i < __members.length; ++i) {
@@ -35,7 +37,7 @@ contract MultiSig {
         );
     }
 
-    function() external payable {}
+    receive() external payable {}
 
     function members() public view returns (address[] memory) {
         return _members;
@@ -73,61 +75,34 @@ contract MultiSig {
         bytes32[] memory s,
         address payable _to,
         uint256 _value
-    ) public OnlyMember returns (bool) {
+    ) external OnlyMember returns (bool) {
         checkSig(0x4b239a29, v, r, s, address(0x0), address(this), _to, _value);
         _to.transfer(_value);
         emit Withdraw(msg.sender, _to, _value);
         return true;
     }
 
-    // {
-    //     "0xdd62ed3e": "allowance(address,address)",
-    //     "0x095ea7b3": "approve(address,uint256)",
-    //     "0x70a08231": "balanceOf(address)",
-    //     "0x18160ddd": "totalSupply()",
-    //     "0xa9059cbb": "transfer(address,uint256)",
-    //     "0x23b872dd": "transferFrom(address,address,uint256)"
-    // }    
-    
-    
     function isContract(address addr) internal view {
         assembly {
             if iszero(extcodesize(addr)) { revert(0, 0) }
         }
     }
-    
-    function handleReturnData() internal pure returns (bool result) {
-        assembly {
-            switch returndatasize()
-            case 0 { // not a std erc20
-                result := 1
-            }
-            case 32 { // std erc20
-                returndatacopy(0, 0, 32)
-                result := mload(0)
-            }
-            default { // anything else, should revert for safety
-                revert(0, 0)
-            }
-        }
-    }
 
-    function erc20Transfer(
+    function ERC20Transfer(
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s,
         address _token,
         address _to,
         uint256 _value
-    ) public OnlyMember {
+    ) external OnlyMember {
         isContract(_token);  
         checkSig(0xa9059cbb, v, r, s, _token, address(this), _to, _value);
-        (bool success, ) = _token.call(abi.encodeWithSelector(0xa9059cbb, _to, _value));
-        require(success);
-        handleReturnData();
+        (bool success, bytes memory data) = _token.call(abi.encodeWithSelector(0xa9059cbb, _to, _value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'ERC20_TRANSFER_FAILED');
     }
 
-    function erc20TransferFrom(
+    function ERC20TransferFrom(
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s,
@@ -135,26 +110,24 @@ contract MultiSig {
         address _from,
         address _to,
         uint256 _value
-    ) public OnlyMember {
+    ) external OnlyMember {
         isContract(_token);  
         checkSig(0x23b872dd, v, r, s, _token, _from, _to, _value);
-        (bool success, ) = _token.call(abi.encodeWithSelector(0x23b872dd, _from, _to, _value));
-        require(success);
-        handleReturnData();
+        (bool success,bytes memory data ) = _token.call(abi.encodeWithSelector(0x23b872dd, _from, _to, _value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'ERC20_TRANSFER_FROM_FAILED');
     }
 
-    function erc20Approve(
+    function ERC20Approve(
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s,
         address _token,
         address _spender,
         uint256 _value
-    ) public OnlyMember {
+    ) external OnlyMember {
         isContract(_token);
         checkSig(0x095ea7b3, v, r, s, _token, address(this), _spender, _value);
-        (bool success, ) = _token.call(abi.encodeWithSelector(0x994ead30, _spender, _value));
-        require(success);
-        handleReturnData();
+        (bool success, bytes memory data) = _token.call(abi.encodeWithSelector(0x994ead30, _spender, _value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'ERC20_APPROVE_FAILED');
     }
 }
