@@ -80,7 +80,7 @@ contract MultiSig {
         address payable _to,
         uint256 _value
     ) external OnlyMember {
-        verify(0x4b239a29, v, r, s, address(0x0), address(this), _to, _value);
+        verify(0x207c76fa, v, r, s, address(0x0), address(this), _to, _value);
         (bool success, ) = _to.call{value: _value}(new bytes(0));
         require(success, "ETHER_TRANSFER_FAILED");
     }
@@ -93,7 +93,7 @@ contract MultiSig {
         address _to,
         uint256 _value
     ) external OnlyMember OnlyContract(_token) {
-        verify(0xa9059cbb, v, r, s, _token, address(this), _to, _value);
+        verify(0xb9367bc2, v, r, s, _token, address(this), _to, _value);
         (bool success, bytes memory data) = _token.call(
             abi.encodeWithSelector(0xa9059cbb, _to, _value)
         );
@@ -112,7 +112,7 @@ contract MultiSig {
         address _to,
         uint256 _value
     ) external OnlyMember OnlyContract(_token) {
-        verify(0x23b872dd, v, r, s, _token, _from, _to, _value);
+        verify(0xc14e130d, v, r, s, _token, _from, _to, _value);
         (bool success, bytes memory data) = _token.call(
             abi.encodeWithSelector(0x23b872dd, _from, _to, _value)
         );
@@ -130,7 +130,7 @@ contract MultiSig {
         address _spender,
         uint256 _value
     ) external OnlyMember OnlyContract(_token) {
-        verify(0x095ea7b3, v, r, s, _token, address(this), _spender, _value);
+        verify(0x3a4fd5f3, v, r, s, _token, address(this), _spender, _value);
         (bool success, bytes memory data) = _token.call(
             abi.encodeWithSelector(0x994ead30, _spender, _value)
         );
