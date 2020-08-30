@@ -58,7 +58,6 @@ contract MultiSig {
         for (uint256 i = 0; i < threshold; ++i) {
             bytes memory data = abi.encode(
                 func,
-                msg.sender,
                 _token,
                 _from,
                 _to,
