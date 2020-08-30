@@ -21,15 +21,15 @@ contract MultiSig {
         _;
     }
 
-    constructor(uint8 M, address[] memory __members) payable {
+    constructor(uint8 M, address[] memory members) payable {
         require(M > 0, "threshold must greater than zero");
         threshold = M;
-        for (uint256 i = 0; i < __members.length; ++i) {
-            if (membership[__members[i]] || __members[i] == address(0x0)) {
+        for (uint256 i = 0; i < members.length; ++i) {
+            if (membership[members[i]] || members[i] == address(0x0)) {
                 continue;
             }
-            membership[__members[i]] = true;
-            _members.push(__members[i]);
+            membership[members[i]] = true;
+            _members.push(members[i]);
         }
         require(
             threshold <= _members.length,
